@@ -1,0 +1,44 @@
+name: 🚀 Deploy Infraestrutura
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Clonar repositório
+        uses: actions/checkout@v3
+
+      - name: 🔐 Gerar chave SSH temporária
+        run: |
+          echo "${{ secrets.AWS_SSH_KEY }}" | base64 -d > chave.pem
+          chmod 600 chave.pem
+
+      - name: 📦 Instalar Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.0
+
+      - name: 📁 Inicializar Terraform
+        working-directory: terraform
+        run: terraform init
+
+      - name: 📄 Validar Terraform
+        working-directory: terraform
+        run: terraform validate
+
+      - name: 📊 Gerar plano de execução
+        working-directory: terraform
+        run: terraform plan
+
+      - name: 🚀 Aplicar infraestrutura
+        working-directory: terraform
+        env:
+          TF_VAR_private_key_path: ../chave.pem
+          TF_VAR_key_name: ${{ secrets.TF_VAR_key_name }}
+          TF_VAR_subnet_id: ${{ secrets.TF_VAR_subnet_id }}
+          TF_VAR_security_group: ${{ secrets.TF_VAR_security_group }}
+          TF_VAR_ami_id: ${{ secrets.TF_VAR_ami_id }}
+        run: terraform apply -auto-approve
